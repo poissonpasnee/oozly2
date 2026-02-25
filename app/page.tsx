@@ -9,25 +9,28 @@ export default function Page() {
   const [messages, setMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    setUrl(String(process.env.NEXT_PUBLIC_SUPABASE_URL || "undefined"));
+  const channel = supabase.channel("db-changes");
 
-    const channel = supabase
-      .channel("messages-channel")
-      .on(
-  "postgres_changes",
-  { event: "INSERT", schema: "public", table: "realtime_ping" },
-  (payload) => {
-    setMessages((prev) => [...prev, payload.new]);
-  }
-)
-      .subscribe((s) => {
-        setStatus(s);
-      });
+  channel.on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public"
+    },
+    (payload) => {
+      console.log("PAYLOAD:", payload);
+      setMessages((prev) => [...prev, payload.new]);
+    }
+  );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  channel.subscribe((status) => {
+    setStatus(status);
+  });
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
