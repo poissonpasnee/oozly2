@@ -6,55 +6,66 @@ import { supabase } from "../src/lib/supabase";
 export default function Page() {
   const [status, setStatus] = useState<string>("init");
   const [url, setUrl] = useState<string>("");
-  const [messages, setMessages] = useState<any[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
 
   useEffect(() => {
-  const channel = supabase.channel("db-changes");
+    setUrl(String(process.env.NEXT_PUBLIC_SUPABASE_URL || "undefined"));
 
-  channel.on(
-    "postgres_changes",
-    {
-      event: "*",
-      schema: "public"
-    },
-    (payload) => {
-      console.log("PAYLOAD:", payload);
-      setMessages((prev) => [...prev, payload.new]);
-    }
-  );
+    const channel = supabase
+      .channel("db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public" },
+        (payload) => {
+          // On garde TOUT le payload, pas فقط payload.new
+          setEvents((prev) => [payload, ...prev].slice(0, 20));
+        }
+      )
+      .subscribe((s) => setStatus(s));
 
-  channel.subscribe((status) => {
-    setStatus(status);
-  });
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <main style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: 36, marginBottom: 12 }}>Realtime Test</h1>
+      <h1 style={{ fontSize: 44, margin: 0 }}>Realtime Test</h1>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginTop: 12 }}>
         <div>
           <b>Status:</b> {status}
         </div>
         <div style={{ wordBreak: "break-all" }}>
           <b>Supabase URL:</b> {url}
         </div>
+        <div style={{ marginTop: 10 }}>
+          <b>Events reçus:</b> {events.length}
+        </div>
       </div>
 
-      <h2 style={{ fontSize: 18, marginBottom: 8 }}>Messages reçus (INSERT)</h2>
-      {messages.length === 0 ? (
-        <div>Aucun message reçu.</div>
-      ) : (
-        messages.map((m) => (
-          <div key={m.id} style={{ padding: 8, border: "1px solid #ddd", marginBottom: 8 }}>
-            {m.content}
-          </div>
-        ))
-      )}
+      <div style={{ marginTop: 18 }}>
+        {events.length === 0 ? (
+          <div>Aucun event reçu.</div>
+        ) : (
+          events.map((e, idx) => (
+            <pre
+              key={idx}
+              style={{
+                padding: 12,
+                border: "1px solid #ddd",
+                borderRadius: 8,
+                overflowX: "auto",
+                marginBottom: 12,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+              }}
+            >
+              {JSON.stringify(e, null, 2)}
+            </pre>
+          ))
+        )}
+      </div>
     </main>
   );
 }
