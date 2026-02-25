@@ -14,12 +14,12 @@ export default function Page() {
     const channel = supabase
       .channel("messages-channel")
       .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
-        }
-      )
+  "postgres_changes",
+  { event: "INSERT", schema: "public", table: "realtime_ping" },
+  (payload) => {
+    setMessages((prev) => [...prev, payload.new]);
+  }
+)
       .subscribe((s) => {
         setStatus(s);
       });
